@@ -59,17 +59,8 @@
     <ClCompile Include="imgui\imgui_draw.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_dx9.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_win32.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="GUI.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Config.c">
       <Filter>Source Files</Filter>
@@ -127,6 +118,21 @@
     </ClCompile>
     <ClCompile Include="SDK\Localize.c">
       <Filter>SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_tables.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\cimgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_impl_win32.c">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_impl_dx9.c">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -261,6 +267,9 @@
     </ClInclude>
     <ClInclude Include="SDK\Localize.h">
       <Filter>SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\cimgui.h">
+      <Filter>imgui</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

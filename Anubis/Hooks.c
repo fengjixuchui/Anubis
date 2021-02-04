@@ -20,7 +20,23 @@
 #include "SDK/UserCmd.h"
 #include "SDK/Utils.h"
 
-struct Hooks hooks;
+struct VmtHook {
+    PVOID base;
+    PUINT_PTR oldVmt;
+    PUINT_PTR newVmt;
+    SIZE_T length;
+};
+
+struct Hooks {
+    HRESULT(WINAPI* originalPresent)(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
+    HRESULT(WINAPI* originalReset)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*);
+    WNDPROC originalWndProc;
+    struct VmtHook clientMode;
+    struct VmtHook panel;
+    struct VmtHook surface;
+};
+
+static struct Hooks hooks;
 
 static LRESULT WINAPI hookedWndProc(HWND window, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -37,16 +53,9 @@ static HRESULT WINAPI hookedPresent(IDirect3DDevice9* device, const RECT* src, c
         init = true;
     }
 
-    if (isGuiOpen) {
-        IDirect3DDevice9_SetRenderState(device, D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE);
-        IDirect3DVertexDeclaration9* vertexDeclaration;
-        IDirect3DDevice9_GetVertexDeclaration(device, &vertexDeclaration);
-
+    if (isGuiOpen)
         GUI_render();
 
-        IDirect3DDevice9_SetVertexDeclaration(device, vertexDeclaration);
-        IDirect3DVertexDeclaration9_Release(vertexDeclaration);
-    }
     return hooks.originalPresent(device, src, dest, windowOverride, dirtyRegion);
 }
 
@@ -94,7 +103,7 @@ static void hookMethod(struct VmtHook* vmtHook, SIZE_T index, PVOID function)
 
 static bool __stdcall createMove(FLOAT inputSampleTime, UserCmd* cmd)
 {
-    bool result = CALL_ORIGINAL(bool(__fastcall*)(PVOID, PVOID, FLOAT, UserCmd*), memory.clientMode, hooks.clientMode.oldVmt, 24, inputSampleTime, cmd);
+    bool result = CALL_ORIGINAL(bool(__fastcall*)(PVOID, PVOID, FLOAT, UserCmd*), Memory()->clientMode, hooks.clientMode.oldVmt, 24, inputSampleTime, cmd);
 
     if (!cmd->commandNumber)
         return result;
@@ -119,7 +128,7 @@ static bool __stdcall createMove(FLOAT inputSampleTime, UserCmd* cmd)
 static INT __stdcall doPostScreenEffects(INT param)
 {
     Glow_render();
-    return CALL_ORIGINAL(INT(__fastcall*)(PVOID, PVOID, INT), memory.clientMode, hooks.clientMode.oldVmt, 44, param);
+    return CALL_ORIGINAL(INT(__fastcall*)(PVOID, PVOID, INT), Memory()->clientMode, hooks.clientMode.oldVmt, 44, param);
 }
 
 static VOID __stdcall lockCursor(VOID)
@@ -128,7 +137,7 @@ static VOID __stdcall lockCursor(VOID)
         Surface_unlockCursor();
         return;
     }
-    CALL_ORIGINAL(VOID(__fastcall*)(PVOID, PVOID), interfaces.surface, hooks.surface.oldVmt, 67);
+    CALL_ORIGINAL(VOID(__fastcall*)(PVOID, PVOID), Interfaces()->surface, hooks.surface.oldVmt, 67);
 }
 
 static VOID __stdcall paintTraverse(UINT panel, BOOLEAN forceRepaint, BOOLEAN allowForce)
@@ -137,29 +146,29 @@ static VOID __stdcall paintTraverse(UINT panel, BOOLEAN forceRepaint, BOOLEAN al
         Esp_render();
     }
 
-    CALL_ORIGINAL(VOID(__fastcall*)(PVOID, PVOID, UINT, BOOLEAN, BOOLEAN), interfaces.panel, hooks.panel.oldVmt, 41, panel, forceRepaint, allowForce);
+    CALL_ORIGINAL(VOID(__fastcall*)(PVOID, PVOID, UINT, BOOLEAN, BOOLEAN), Interfaces()->panel, hooks.panel.oldVmt, 41, panel, forceRepaint, allowForce);
 }
 
 VOID Hooks_init(VOID)
 {
-    hookVmt(memory.clientMode, &hooks.clientMode);
+    hookVmt(Memory()->clientMode, &hooks.clientMode);
     hookMethod(&hooks.clientMode, 24, createMove);
     hookMethod(&hooks.clientMode, 44, doPostScreenEffects);
 
-    hookVmt(interfaces.panel, &hooks.panel);
+    hookVmt(Interfaces()->panel, &hooks.panel);
     hookMethod(&hooks.panel, 41, paintTraverse);
 
-    hookVmt(interfaces.surface, &hooks.surface);
+    hookVmt(Interfaces()->surface, &hooks.surface);
     hookMethod(&hooks.surface, 67, lockCursor);
 
     HWND window = FindWindowA("Valve001", NULL);
     hooks.originalWndProc = (WNDPROC)SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)hookedWndProc);
 
-    hooks.originalPresent = **memory.present;
-    **memory.present = hookedPresent;
+    hooks.originalPresent = **Memory()->present;
+    **Memory()->present = hookedPresent;
 
-    hooks.originalReset = **memory.reset;
-    **memory.reset = hookedReset;
+    hooks.originalReset = **Memory()->reset;
+    **Memory()->reset = hookedReset;
 }
 
 VOID Hooks_restore(VOID)
@@ -170,6 +179,6 @@ VOID Hooks_restore(VOID)
 
     SetWindowLongPtr(FindWindowW(L"Valve001", NULL), GWLP_WNDPROC, (LONG_PTR)hooks.originalWndProc);
 
-    **memory.present = hooks.originalPresent;
-    **memory.reset = hooks.originalReset;
+    **Memory()->present = hooks.originalPresent;
+    **Memory()->reset = hooks.originalReset;
 }
